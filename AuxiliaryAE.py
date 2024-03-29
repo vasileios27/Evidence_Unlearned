@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torch.utils.data.dataset import random_split
 import matplotlib.pyplot as plt
 import numpy as np
@@ -237,9 +237,6 @@ def write_to_file(filename, message):
     with open(filename, "a") as file:  # Open in append mode
         file.write(message + "\n")  # Write message and a newline character
 
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, Subset
-import torch
 
 def get_mnist_loaders(data_root='./data', batch_size=64, train_val_split_ratio=0.8, filter_by_digit=None):
     """

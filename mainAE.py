@@ -154,7 +154,8 @@ def train_and_validate(model, train_loader, val_loader, device, num_epochs=1, cr
         if val_loss < best_loss:
             best_epoch = epoch
             print('Validation loss decreased ({:.6f} --> {:.6f}). in epoch {}.\nSaving model ...'.format(best_loss, val_loss,best_epoch))
-            torch.save(model.state_dict(), f'model_{lr}.pth')
+            name = f'models/main_models/model_{lr}.pth'
+            torch.save(model.state_dict(), name)
             best_loss = val_loss
             # Log training and validation loss
         
@@ -221,9 +222,10 @@ def main(num_epochs=1, criterion = nn.MSELoss(), lr=0.002, log_filename="trainin
     visualize_reconstructions(model, val_loader, device, n_images=6)
 
 if __name__ == '__main__':
-    for lr in [0.005, 0.004, 0.003, 0.002, 0.0009, 0.006, 0.003]:
+    for lr in range(80,100, 5 ):
+        lr = 0.00001 * lr
         main(
-            num_epochs=600, 
+            num_epochs=300, 
             criterion = nn.MSELoss(), 
             lr=lr, 
             log_filename="training_log.txt")

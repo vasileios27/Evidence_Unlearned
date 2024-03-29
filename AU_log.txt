@@ -1,0 +1,40 @@
+
+Hyperparameters: lr=0.01, batch_size=64
+Epoch [0], Val Loss: 0.283931
+
+
+Hyperparameters: lr=0.01, batch_size=64
+Epoch [0], Val Loss: 0.284905
+
+
+Hyperparameters: lr=0.01, batch_size=64
+Epoch [0], Val Loss: 0.217922
+
+
+Hyperparameters: lr=0.005, batch_size=64
+Epoch [185], Val Loss: 0.080166
+
+
+Hyperparameters: lr=0.004, batch_size=64
+Epoch [123], Val Loss: 0.101136
+
+
+Hyperparameters: lr=0.003, batch_size=64
+Epoch [146], Val Loss: 0.085525
+
+
+Hyperparameters: lr=0.002, batch_size=64
+Epoch [94], Val Loss: 0.075208
+
+
+Hyperparameters: lr=0.0009, batch_size=64
+Epoch [181], Val Loss: 0.059088
+
+
+Hyperparameters: lr=0.006, batch_size=64
+Epoch [72], Val Loss: 0.280624
+
+
+Hyperparameters: lr=0.003, batch_size=64
+Epoch [179], Val Loss: 0.059977
+

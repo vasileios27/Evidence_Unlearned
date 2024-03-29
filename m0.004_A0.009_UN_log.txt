@@ -1,0 +1,50 @@
+loss for filter : 0.08417808606893665
+loss for rest : 0.081373721422906
+loss for filter : 0.08509796083502884
+loss for rest : 0.08137372154350632
+After Evidence Unlearning
+loss for filter : 1.031605389001103
+loss for rest : 0.9885537442335246
+
+loss for filter : 0.08424138520360616
+loss for rest : 0.08137372131861975
+After Evidence Unlearning
+loss for filter : 0.9618209822299961
+loss for rest : 1.0411769981880423
+
+loss for filter : 0.08490571125080593
+loss for rest : 0.08137372135909521
+After Evidence Unlearning
+loss for filter : 1.051562412106505
+loss for rest : 1.0052201620883974
+
+loss for filter : 0.08526853677839072
+loss for rest : 0.0813737214900209
+After Evidence Unlearning
+loss for filter : 1.0682382884319548
+loss for rest : 1.0251951420854652
+
+loss for filter : 0.08468300397804662
+loss for rest : 0.08137372141939536
+After Evidence Unlearning
+loss for filter : 1.0418306497197165
+loss for rest : 1.0458192862290467
+
+loss for filter : 0.08421698522324846
+loss for rest : 0.08137372139564701
+After Evidence Unlearning
+loss for filter : 0.6644793568110889
+loss for rest : 1.1022941778800404
+
+loss for filter : 0.0845370729686449
+loss for rest : 0.08137372130499027
+After Evidence Unlearning
+loss for filter : 1.0539801911998816
+loss for rest : 1.0193700846872658
+
+Before Unlearning loop for LR:0.005
+loss for filter : 0.08391433219457495
+loss for rest : 0.08137372141113507
+Before Unlearning loop for LR:0.005
+loss for filter : 0.08499821145457284
+loss for rest : 0.08137372126492783

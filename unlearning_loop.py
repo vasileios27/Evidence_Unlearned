@@ -189,7 +189,7 @@ def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", 
             best_epoch = epoch
             print('Validation loss decreased ({:.6f} --> {:.6f}). in epoch {}.\nSaving model ...'.format(best_loss, val_loss,best_epoch))
             path = f'models/modelsEvidenceUnlearning/UN_model_LR{lr}_b{beta}.pth'
-            torch.save(mainAE.state_dict(), f'UN_model_{lr}.pth')
+            torch.save(mainAE.state_dict(), path)
             best_loss = val_loss
             # Log training and validation loss
     namea = f'plots/UL/After_l{lr}_b{beta}_reconstructions.png'        
