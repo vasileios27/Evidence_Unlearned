@@ -51,7 +51,7 @@ def evaluate_model(model, data_loader, criterion, device):
     avg_loss = total_loss / total_samples
     return avg_loss
 
-def get_mnist_loaders(data_root='./data', batch_size=64, train_val_split_ratio=0.8):
+def get_mnist_loaders(data_root='./data', batch_size=64, train_val_split_ratio=0.8, separation_criterion='mod3'):
     """
     Get MNIST data loaders, including a 'rest' loader for digits where digit % 3 != 0.
 
@@ -72,31 +72,39 @@ def get_mnist_loaders(data_root='./data', batch_size=64, train_val_split_ratio=0
     
     # Load the full MNIST training dataset
     full_train_dataset = datasets.MNIST(root=data_root, train=True, download=True, transform=transform)
-    
-    # Filter indices for train/val split where digit % 3 == 0 and digit % 3 != 0
-    divisible_by_3_indices = [i for i, (_, label) in enumerate(full_train_dataset) if label % 3 == 0]
-    not_divisible_by_3_indices = [i for i, (_, label) in enumerate(full_train_dataset) if label % 3 != 0]
-    
-    # Create subsets
-    divisible_by_3_dataset = Subset(full_train_dataset, divisible_by_3_indices)
-    not_divisible_by_3_dataset = Subset(full_train_dataset, not_divisible_by_3_indices)
-    
-    # Calculate sizes for splitting the divisible dataset into training and validation
-    train_size = int(len(divisible_by_3_dataset) * train_val_split_ratio)
-    val_size = len(divisible_by_3_dataset) - train_size
-    
-    # Split the divisible dataset
-    train_dataset, val_dataset = torch.utils.data.random_split(divisible_by_3_dataset, [train_size, val_size])
-    
-    # Create data loaders
+
+    # Modify filtering logic based on `separation_criterion`
+    if separation_criterion == 'mod3':
+        # Filter indices for train/val split where digit % 3 == 0
+        filter_indices = [i for i, (_, label) in enumerate(full_train_dataset) if label % 3 == 0]
+        rest_indices = [i for i, (_, label) in enumerate(full_train_dataset) if label % 3 != 0]
+
+    elif separation_criterion == 'single_digit':
+        # Replace '1' with the digit you want to select
+        selected_digit = 1
+        filter_indices = [i for i, (_, label) in enumerate(full_train_dataset) if label == selected_digit]
+        rest_indices = [i for i, (_, label) in enumerate(full_train_dataset) if label != selected_digit]
+
+    # Create subsets based on the selected indices
+    filter_dataset = Subset(full_train_dataset, filter_indices)
+    rest_dataset = Subset(full_train_dataset, rest_indices)
+
+    # Calculate sizes for splitting the filter dataset into training and validation if needed
+    train_size = int(len(filter_dataset) * train_val_split_ratio)
+    val_size = len(filter_dataset) - train_size
+
+    # Split the filter dataset into training and validation sets
+    train_dataset, val_dataset = torch.utils.data.random_split(filter_dataset, [train_size, val_size])
+
+    # Create data loaders for the datasets
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    rest_loader = DataLoader(not_divisible_by_3_dataset, batch_size=batch_size, shuffle=True)
+    rest_loader = DataLoader(rest_dataset, batch_size=batch_size, shuffle=True)
     
     return train_loader, val_loader, rest_loader
 
 
-def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", path_mainAE ='path_to_model_1.pth', path_AuxiliaryAE ='path_to_model_2.pth', beta= 0.1   ):
+def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", path_mainAE='path_to_model_1.pth', path_AuxiliaryAE='path_to_model_2.pth', beta=0.1, separation_criterion='mod3'):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     mainAE, AuxiliaryAE = load_two_mae_models(path_mainAE, path_AuxiliaryAE)
@@ -125,26 +133,26 @@ def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", 
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)  # Usually, you don't need to shuffle the validation set
 
-    _, filter1loader, filter2loader = get_mnist_loaders(data_root='./data', batch_size=64, train_val_split_ratio=0.8)
+    train_filter1loader, filter1loader, filter2loader = get_mnist_loaders(data_root='./data', batch_size=64, train_val_split_ratio=0.8, separation_criterion='mod3')
     # Define loss function
     criterion = torch.nn.MSELoss()
     optimizer = optim.Adam(mainAE.parameters(), lr=lr)
     best_loss = float('inf') 
 
-    nameb = f'plots/UL/Before_l{lr}_b{beta}_reconstructions.png'        
+    nameb = f'plots/UL/Before_l{lr}_b{beta}_s{separation_criterion}_reconstructions.png'        
     visualize_reconstructions3(mainAE, train_loader, device,nameb, n_images=10)
     rest_loss = evaluate_model(mainAE, filter2loader, criterion, device)
     filter_loss = evaluate_model(mainAE, filter1loader, criterion, device)
-    write_to_file(log_filename, f'Before Unlearning loop for LR:{lr}')
-    message = f"loss for filter : {filter_loss}\nloss for rest : {rest_loss}"
+    write_to_file(log_filename, f'Before Unlearning loop for LR:{lr} and beta: {beta}')
+    message = f"separation_criterion: {separation_criterion}\nloss for for y % 3 == 0 : {filter_loss}\nloss for y % 3 != 0 : {rest_loss}"
     write_to_file(log_filename, message)
 
     # evaluation phase for mainAE in filtered dataset
     # Set the model to evaluation mode
 
     for epoch in range(num_epochs):
-        train_loss = 0.0
-        for data in train_loader:
+        f1_train_loss = 0.0
+        for data in train_filter1loader:
             imgs, _ = data
             imgs = imgs.to(device)            
             # Reset gradients
@@ -161,6 +169,35 @@ def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", 
             # Backpropagate only through networkA
             loss.backward()
             optimizer.step()
+        
+            f1_train_loss += loss.item() * imgs.size(0)
+        
+        # Calculate average training loss
+        f1_train_loss /= len(train_filter1loader.dataset)
+
+        f2_train_loss = 0.0
+        for data in filter2loader:
+            imgs, _ = data
+            imgs = imgs.to(device)            
+            # Reset gradients
+            optimizer.zero_grad()
+
+            # Forward pass through both networks (example)
+            outputA = mainAE(imgs)
+            with torch.no_grad():  # Ensures no gradients are computed for networkB
+                outputB = AuxiliaryAE(imgs)
+            
+            # Compute loss using output from networkA (and possibly networkB, depending on your needs)
+            loss = criterion(outputA,imgs)  # Example loss calculation
+            
+            # Backpropagate only through networkA
+            loss.backward()
+            optimizer.step()
+
+            f2_train_loss += loss.item() * imgs.size(0)
+        
+        # Calculate average training loss
+        f2_train_loss /= len(filter2loader.dataset)
 
                     # Validation phase
         mainAE.eval()  # Set the model to evaluation mode
@@ -172,7 +209,7 @@ def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", 
                 outputA = mainAE(imgs)
                 outputB = AuxiliaryAE(imgs)
                 # Compute loss using output from networkA (and possibly networkB, depending on your needs)
-                loss = criterion(outputA,imgs) + 1/(criterion(outputA, outputB)  + 0.1e-7) # Example loss calculation
+                loss = criterion(outputA,imgs) + beta * ( 1/(criterion(outputA, outputB)  + 0.1e-7)) # Example loss calculation
                 val_loss += loss.item() * imgs.size(0)
 
         # Calculate average validation loss
@@ -181,22 +218,24 @@ def unlearning_loop(num_epochs=10, lr=0.002, log_filename="unlearning_log.txt", 
         
         # Only print every 10 epochs (epoch numbers start from 0)
         if (epoch + 1) % 10 == 0:
-         print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}')
+            print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss f1: {f1_train_loss:.6f} Train Loss f2: {f2_train_loss:.6f}, Val Loss: {val_loss:.6f}')
+            path = f'models/modelsEvidenceUnlearning/UN_model_LR{lr}_b{beta}_ep{epoch}_s{separation_criterion}.pth'
+            torch.save(mainAE.state_dict(), path)
     
         
         # Save the model if validation loss has decreased
         if val_loss < best_loss:
             best_epoch = epoch
             print('Validation loss decreased ({:.6f} --> {:.6f}). in epoch {}.\nSaving model ...'.format(best_loss, val_loss,best_epoch))
-            path = f'models/modelsEvidenceUnlearning/UN_model_LR{lr}_b{beta}.pth'
+            path = f'models/modelsEvidenceUnlearning/UN_model_LR{lr}_b{beta}_s{separation_criterion}.pth'
             torch.save(mainAE.state_dict(), path)
             best_loss = val_loss
             # Log training and validation loss
-    namea = f'plots/UL/After_l{lr}_b{beta}_reconstructions.png'        
+    namea = f'plots/UL/After_l{lr}_b{beta}_s{separation_criterion}_reconstructions.png'        
     visualize_reconstructions3(mainAE, train_loader, device,namea, n_images=10)
     rest_loss = evaluate_model(mainAE, filter2loader, criterion, device)
     filter_loss = evaluate_model(mainAE, filter1loader, criterion, device)
-    message = f"After Evidence Unlearning\nloss for filter : {filter_loss}\nloss for rest : {rest_loss}\nBest_Epoch{best_epoch}\n"
+    message = f"separation_criterion: {separation_criterion}\nAfter Evidence Unlearning\nloss for for y % 3 == 0 : {filter_loss}\nloss for y % 3 != 0 : {rest_loss}\nBest_Epoch{best_epoch}\n"
     write_to_file(log_filename, message)
     
 
@@ -242,10 +281,13 @@ def visualize_reconstructions3(model, data_loader, device, path, n_images=10):
     plt.show()
 
 if __name__ == "__main__":
-    for lr in [0.005, 0.004, 0.003, 0.002, 0.0009, 0.006, 0.003]:
-        unlearning_loop(
-            num_epochs=100, 
-            lr=lr, 
-            log_filename=f"m0.004_A0.009_UN_log.txt", 
-            path_mainAE ='model_0.004.pth', 
-            path_AuxiliaryAE ='Au_0.0009.pth'   )
+    for beta in [0.9, 1, 1.2]:
+        for lr in [0.005, 0.004, 0.003, 0.002, 0.0009, 0.006, 0.003]:
+            unlearning_loop(
+                num_epochs=100, 
+                lr=lr, 
+                log_filename=f"News{1}_m20.004_A0.009_UN_log.txt", 
+                path_mainAE ='models/main_models/model_0.0009.pth', 
+                path_AuxiliaryAE ='models/AuxiliaryModels/Au_0.005.pth',
+                beta= beta,
+                separation_criterion='single_digit' )
